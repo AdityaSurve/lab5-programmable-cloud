@@ -1,84 +1,95 @@
 #!/usr/bin/env python3
 
-import argparse
 import time
-
+from pprint import pprint
 import googleapiclient.discovery
 import google.auth
+from googleapiclient.errors import HttpError
 
-credentials, project = google.auth.default()
+credentials, PROJECT = google.auth.default()
+ZONE = "us-west1-b"
+SOURCE_INSTANCE = "lab5-flask-vm"
+SNAPSHOT_NAME = f"base-snapshot-{SOURCE_INSTANCE}"
+CLONE_PREFIX = "clone-vm"
+MACHINE_TYPE = "f1-micro"
+
 compute = googleapiclient.discovery.build(
     'compute', 'v1', credentials=credentials)
 
-ZONE = "us-west1-b"
-INSTANCE_NAME = "flask-vm"
 
-
-def wait_for_zone_operation(compute, project, zone, op_name):
+def wait_for_zone_op(operation):
+    name = operation['name']
+    print(f"Waiting for zone operation {name}...")
     while True:
-        op = compute.zoneOperations().get(
-            project=project, zone=zone, operation=op_name
+        result = compute.zoneOperations().get(
+            project=PROJECT, zone=ZONE, operation=name).execute()
+        if result.get('status') == 'DONE':
+            if 'error' in result:
+                raise Exception(result['error'])
+            print("Operation finished.")
+            return
+        time.sleep(1)
+
+
+def create_snapshot():
+    try:
+        instance = compute.instances().get(project=PROJECT, zone=ZONE,
+                                           instance=SOURCE_INSTANCE).execute()
+        boot_disk = instance['disks'][0]['source'].split('/')[-1]
+
+        print(f"Creating snapshot {SNAPSHOT_NAME} from disk {boot_disk}...")
+        op = compute.disks().createSnapshot(
+            project=PROJECT,
+            zone=ZONE,
+            disk=boot_disk,
+            body={"name": SNAPSHOT_NAME}
         ).execute()
-        if op["status"] == "DONE":
-            if "error" in op:
-                raise RuntimeError(op["error"])
-            return op
-        time.sleep(2)
+        wait_for_zone_op(op)
+        print("Snapshot created.")
+    except HttpError as e:
+        if int(getattr(e.resp, "status", 0)) == 409:
+            print("Snapshot already exists, skipping creation.")
+        else:
+            raise
 
 
-def create_snapshot(compute, project, zone, instance_name):
-    instance = compute.instances().get(
-        project=project, zone=zone, instance=instance_name
-    ).execute()
-
-    disk_selflink = instance["disks"][0]["source"]
-
-    snapshot_body = {
-        "name": f"base-snapshot-{instance_name}"
-    }
-
-    op = compute.disks().createSnapshot(
-        project=project, zone=zone, disk=instance_name, body=snapshot_body
-    ).execute()
-
-    wait_for_zone_operation(compute, project, zone, op["name"])
-
-
-def create_vm_from_snapshot(compute, project, zone, name, snapshot_name):
+def create_instance_from_snapshot(name):
     config = {
         "name": name,
-        "machineType": f"zones/{zone}/machineTypes/e2-medium",
-        "disks": [
-            {
-                "boot": True,
-                "autoDelete": True,
-                "initializeParams": {
-                    "sourceSnapshot": f"projects/{project}/global/snapshots/{snapshot_name}"
-                },
+        "machineType": f"projects/{PROJECT}/zones/{ZONE}/machineTypes/{MACHINE_TYPE}",
+        "disks": [{
+            "boot": True,
+            "autoDelete": True,
+            "initializeParams": {
+                "sourceSnapshot": f"projects/{PROJECT}/global/snapshots/{SNAPSHOT_NAME}"
             }
-        ],
-        "networkInterfaces": [
-            {
-                "network": "global/networks/default",
-                "accessConfigs": [
-                    {"name": "External NAT", "type": "ONE_TO_ONE_NAT"}
-                ],
-            }
-        ],
+        }],
+        "networkInterfaces": [{
+            "network": f"projects/{PROJECT}/global/networks/default",
+            "accessConfigs": [{"type": "ONE_TO_ONE_NAT", "name": "External NAT"}],
+        }],
     }
-
-    op = compute.instances().insert(project=project, zone=zone, body=config).execute()
-    wait_for_zone_operation(compute, project, zone, op["name"])
+    start = time.time()
+    op = compute.instances().insert(project=PROJECT, zone=ZONE, body=config).execute()
+    wait_for_zone_op(op)
+    end = time.time()
+    print(f"Instance {name} created in {end - start:.2f} seconds.")
+    return end - start
 
 
 def main():
-    create_snapshot(compute, project, ZONE, INSTANCE_NAME)
+    create_snapshot()
+    timings = []
+    for i in range(1, 4):
+        vm_name = f"{CLONE_PREFIX}-{i}"
+        duration = create_instance_from_snapshot(vm_name)
+        timings.append((vm_name, duration))
 
-    for i in range(3):
-        instance_name = f"flask-vm-clone-{i+1}"
-        print(f"Creating instance: {instance_name}")
-        create_vm_from_snapshot(compute, project, ZONE,
-                                instance_name, f"base-snapshot-{INSTANCE_NAME}")
+    with open("TIMING.md", "w") as f:
+        f.write("# VM Creation Timings\n\n")
+        for vm, t in timings:
+            f.write(f"{vm}: {t:.2f} seconds\n")
+    print("\n🎉 VM creation timings saved to TIMING.md")
 
 
 if __name__ == "__main__":

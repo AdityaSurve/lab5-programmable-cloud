@@ -92,7 +92,6 @@ while True:
     time.sleep(5)
 """
 
-# Startup script for VM1
 vm1_startup_script = """#!/bin/bash
 mkdir -p /srv
 cd /srv
@@ -107,7 +106,6 @@ pip3 install --upgrade google-api-python-client google-auth-httplib2 google-auth
 python3 vm1-launch-vm2-code.py
 """
 
-# Create VM1 with metadata
 config_vm1 = {
     "name": VM1_NAME,
     "machineType": f"zones/{ZONE}/machineTypes/{MACHINE_TYPE}",
