@@ -3,7 +3,7 @@ import time
 from googleapiclient import discovery
 from google.oauth2 import service_account
 
-PROJECT = "lab-5"
+PROJECT = "lab5-487723"
 ZONE = "us-west1-b"
 VM1_NAME = "vm1-launcher"
 MACHINE_TYPE = "e2-medium"
