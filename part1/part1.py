@@ -43,30 +43,29 @@ def list_instances(compute, project, zone):
     result = compute.instances().list(project=project, zone=zone).execute()
     return result['items'] if 'items' in result else []
 
-
 def wait_for_zone_op(compute, project, zone, op_name):
     while True:
         op = compute.zoneOperations().get(
             project=project, zone=zone, operation=op_name
         ).execute()
+
         if op.get("status") == "DONE":
             if "error" in op:
                 raise RuntimeError(op["error"])
             return op
         time.sleep(2)
-
 
 def wait_for_global_op(compute, project, op_name):
     while True:
         op = compute.globalOperations().get(
             project=project, operation=op_name
         ).execute()
+
         if op.get("status") == "DONE":
             if "error" in op:
                 raise RuntimeError(op["error"])
             return op
         time.sleep(2)
-
 
 def get_ubuntu_image_selflink(compute):
     img = compute.images().getFromFamily(
@@ -74,7 +73,6 @@ def get_ubuntu_image_selflink(compute):
         family=IMAGE_FAMILY
     ).execute()
     return img["selfLink"]
-
 
 def instance_exists(compute, project, zone, name):
     try:
@@ -84,7 +82,6 @@ def instance_exists(compute, project, zone, name):
         if e.resp.status == 404:
             return False
         raise
-
 
 def create_instance(compute, project, zone, name, machine_type):
     source_image = get_ubuntu_image_selflink(compute)
@@ -117,7 +114,6 @@ def create_instance(compute, project, zone, name, machine_type):
     op = compute.instances().insert(project=project, zone=zone, body=config).execute()
     wait_for_zone_op(compute, project, zone, op["name"])
 
-
 def firewall_rule_exists_by_list(compute, project, name):
     req = compute.firewalls().list(project=project)
     while req is not None:
@@ -127,7 +123,6 @@ def firewall_rule_exists_by_list(compute, project, name):
                 return True
         req = compute.firewalls().list_next(previous_request=req, previous_response=resp)
     return False
-
 
 def ensure_firewall_allow_5000(compute, project):
     if firewall_rule_exists_by_list(compute, project, FIREWALL_NAME):
@@ -165,12 +160,10 @@ def add_network_tag_via_setTags(compute, project, zone, instance_name, tag):
     ).execute()
     wait_for_zone_op(compute, project, zone, op["name"])
 
-
 def get_external_ip(compute, project, zone, instance_name):
     inst = compute.instances().get(project=project, zone=zone,
                                    instance=instance_name).execute()
     return inst["networkInterfaces"][0]["accessConfigs"][0]["natIP"]
-
 
 def main():
     parser = argparse.ArgumentParser()
@@ -181,10 +174,14 @@ def main():
     print("Your running instances are:")
     for instance in list_instances(service, project, 'us-west1-b'):
         print(instance['name'])
+
     if not instance_exists(service, project, ZONE, args.name):
         create_instance(service, project, ZONE, args.name, args.machine_type)
+
     ensure_firewall_allow_5000(service, project)
+
     add_network_tag_via_setTags(service, project, ZONE, args.name, NETWORK_TAG)
+
     ip = get_external_ip(service, project, ZONE, args.name)
     print(f"http://{ip}:5000")
 
