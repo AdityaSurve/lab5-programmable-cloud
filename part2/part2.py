@@ -8,7 +8,7 @@ from googleapiclient.errors import HttpError
 
 credentials, PROJECT = google.auth.default()
 ZONE = "us-west1-b"
-SOURCE_INSTANCE = "lab5-flask-vm"
+SOURCE_INSTANCE = "flask-vm"
 SNAPSHOT_NAME = f"base-snapshot-{SOURCE_INSTANCE}"
 CLONE_PREFIX = "clone-vm"
 MACHINE_TYPE = "f1-micro"
