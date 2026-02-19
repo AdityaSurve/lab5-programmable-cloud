@@ -164,3 +164,33 @@ After the files were written, VM-1 executed `vm1-launch-vm2-code.py`. The code:
 ![Part 3 - gcloud compute instances list](part3_gcloud_list.png)
 
 ---
+
+### References
+
+## References
+
+## References
+
+1.  **[Google Cloud Compute Engine API - Python Client Library](https://github.com/googleapis/google-api-python-client/blob/main/samples/compute/README.md)**: Served as the starting point for initializing the `compute` service. Used it to learn the core syntax for `googleapiclient.discovery.build` and how to structure the initial API calls.
+
+2.  **[Compute Engine REST API: Instances Resource](https://docs.cloud.google.com/compute/docs/reference/rest/v1/instances)**: Helped in understanding the complex JSON body required for VM creation. Used to map Python dictionaries to specific API fields like `machineType`, `disks`, and `networkInterfaces`.
+
+3.  **[Using Google Application Default Credentials (ADC)](https://cloud.google.com/docs/authentication/provide-credentials-adc)**: Provided the method to handle authentication without hardcoding keys. Used `google.auth.default()` to automatically pick up local credentials for Part 1 and Part 2.
+
+4.  **[Automating VM Deployment with Startup Scripts](https://docs.cloud.google.com/compute/docs/instances/startup-scripts/linux)**: Detailed how to pass bash commands into the `metadata` field of an instance. Used to automate the entire Flaskr installation and database initialization process so the VM was ready immediately upon boot.
+
+5.  **[GCP Compute Engine: Creating and Managing Snapshots](https://docs.cloud.google.com/compute/docs/disks/create-snapshots)**: Explained the relationship between disks and snapshots. Used the `disks().createSnapshot()` method logic to ensure the correct boot disk of the source VM was targeted.
+
+6.  **[Provisioning VMs from Snapshots](https://docs.cloud.google.com/compute/docs/instances/create-vm-from-snapshot)**: Identified the specific `sourceSnapshot` parameter needed for cloning. Used this in Part 2 to point the three new clones to the snapshot created from the original instance.
+
+7.  **[Google Cloud Python SDK: Waiting for Operations to Complete](https://docs.cloud.google.com/compute/docs/samples/compute-instances-operation-check)**: Clarified that API calls are asynchronous and return "operations." Used polling logic on `zoneOperations().get()` to wait for a `DONE` status to accurately measure VM creation times.
+
+8.  **[Managing VPC Firewall Rules via API](https://docs.cloud.google.com/firewall/docs/using-firewalls)**: Explained how to programmatically open ports. Used to write the code that creates the `allow-5000` rule, ensuring the Flask app was accessible from the public internet.
+
+9.  **[Updating Instance Network Tags (instances.setTags)](https://docs.cloud.google.com/compute/docs/reference/rest/v1/instances/setTags)**: Explained that tags require a "fingerprint" for updates. Used to implement a "get-then-set" workflow where the current VM metadata was fetched before applying the network tag.
+
+10. **[Authenticating with Service Account JSON Keys](https://cloud.google.com/docs/authentication/production#obtaining_and_providing_service_account_credentials_manually)**: Crucial for the requirements of Part 3. Used to learn how to load a specific JSON file into a `service_account.Credentials` object so VM-1 could act as an authorized identity.
+
+11. **[Compute Engine Metadata Server Overview](https://docs.cloud.google.com/compute/docs/metadata/overview)**: Explained how to retrieve custom attributes from within a running VM. Used metadata flavor headers to pull the Part 3 scripts and credentials into VM-1 from the internal metadata URL.
+
+12. **[Google Cloud Python Client Library: Error Handling](https://github.com/googleapis/google-api-python-client/blob/main/docs/errors.md)**: Explained how to catch specific `HttpError` codes. Used to make scripts idempotent, specifically catching `404` errors when checking for instance existence and `409` errors if a snapshot already existed.
