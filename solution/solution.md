@@ -146,7 +146,7 @@ Since VM-1 needs everything required to create VM-2, I passed the required conte
 In the VM-1 startup script, I pulled these values from the metadata server (`http://metadata/...`) and wrote them into files under `/srv/`. This made the VM self-contained and able to run the VM-2 creation code automatically.
 
 #### 3) VM-1 launches VM-2
-After the files were written, VM-1 executed `vm1-launch-vm2-code.py`. That script:
+After the files were written, VM-1 executed `vm1-launch-vm2-code.py`. The code:
 * loads `/srv/service-credentials.json`
 * creates VM-2 using `instances().insert(...)`
 * waits until the zone operation reaches `DONE`
